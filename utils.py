@@ -3,7 +3,54 @@ import scipy
 import copy
 import scipy.linalg
 import numpy as np
+import torch.nn as nn
 
+
+
+class MLP(nn.Module):
+    
+    def __init__(self, input_dim, hidden_dim, output_dim, bias=False):
+        
+        super(MLP, self).__init__()
+        self.linear1 = nn.Linear(input_dim, hidden_dim, bias=bias)
+        self.linear2 = nn.Linear(hidden_dim, output_dim, bias=bias)
+        
+    def forward(self, X):
+        
+        """
+        X: [batch_size, input_dim], float tensor
+        """
+        
+        if (X.type() != 'torch.FloatTensor'):
+            X = X.type(torch.FloatTensor)
+        
+        X = F.relu(self.linear1(X))
+        H = self.linear2(X)
+        
+        # H: [batch_size, output_dim], the feature representation
+        return H
+    
+    
+class LR(nn.Module):
+    
+    def __init__(self, input_dim, output_dim, bias=False):
+        
+        super(LR, self).__init__()
+        self.linear = nn.Linear(input_dim, output_dim, bias=bias)
+        
+    def forward(self, X):
+        
+        """
+        X: [batch_size, input_dim], float tensor
+        """
+        
+        if (X.type() != 'torch.FloatTensor'):
+            X = X.type(torch.FloatTensor)
+        
+        H = self.linear(X)
+        
+        # H: [batch_size, output_dim], the feature representation
+        return H
 
 def calculate_Atilde(A, K, alpha):
     
@@ -41,7 +88,6 @@ def calculate_Atilde(A, K, alpha):
     
     # A_tilde: [N, N], 2-d float tensor
     return torch.tensor(A_tilde).type(torch.FloatTensor)
-
 
 class cSBM:
     
@@ -87,7 +133,7 @@ class cSBM:
         for i in range(N):
             for j in range(i+1, N):
                 if (v[i] == v[j]):
-                    if (np.random.choice(a = [1,0],p = [c_in/N, 1-c_in/N])):
+                    if (np.random.choice(a = [1,0], p = [c_in/N, 1-c_in/N])):
                         A[i,j] = 1.0
                     else:
                         A[i,j] = 0.0
@@ -111,6 +157,42 @@ class cSBM:
         self.threshold = l**2 + (mu**2)/(N/p)
         self.class1_ids = class1_ids.reshape(-1)
         self.class2_ids = class2_ids.reshape(-1)
+        self.Xs = None
+        self.ys = None
+       
+    def generate_features(self, n_k):
+        
+        # Generate feature vectors for each node with size n_k.
+        
+        v = self.v
+        p = self.p
+        mu = self.mu
+        u = self.u
+        N = self.N
+        
+        Xs = []
+        ys = []
+        for i in range(N):
+            X = []
+            for j in range(n_k):
+                x_j = np.sqrt(mu/N)*v[i]*u + np.random.normal(loc=0, scale=1, size=p)/np.sqrt(p)
+                X.append(x_j)
+
+            X = torch.tensor(np.array(X))
+            
+            if v[i] == -1:
+                y = np.zeros(n_k)
+            elif v[i] == 1:
+                y = np.ones(n_k)
+
+            y = torch.tensor(y).type(torch.LongTensor)
+            Xs.append(X)
+            ys.append(y)
+        
+        self.Xs = Xs
+        self.ys = ys
+          
+            
         
         
 def mean_agg(central_parameters, central_model, node_list, train_indices):
