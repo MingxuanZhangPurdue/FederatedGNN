@@ -22,9 +22,6 @@ class MLP(nn.Module):
         X: [batch_size, input_dim], float tensor
         """
         
-        if (X.type() != 'torch.FloatTensor'):
-            X = X.type(torch.FloatTensor)
-        
         X = F.relu(self.linear1(X))
         H = self.linear2(X)
         
@@ -45,8 +42,6 @@ class LR(nn.Module):
         X: [batch_size, input_dim], float tensor
         """
         
-        if (X.type() != 'torch.FloatTensor'):
-            X = X.type(torch.FloatTensor)
         
         H = self.linear(X)
         
